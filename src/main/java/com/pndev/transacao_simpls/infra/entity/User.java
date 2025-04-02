@@ -29,4 +29,5 @@ public class User {
 
     @OneToOne(mappedBy ="users", cascade = CascadeType.ALL)
     private Wallet wallet;
+    private TypeUser typeUser;
 }

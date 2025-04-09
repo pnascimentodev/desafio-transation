@@ -2,11 +2,18 @@ package com.pndev.transacao_simpls.services;
 
 
 import com.pndev.transacao_simpls.controller.TransactionDTO;
+import com.pndev.transacao_simpls.exceptions.BadRequestExeption;
+import com.pndev.transacao_simpls.infra.clients.ClientNotification;
+import com.pndev.transacao_simpls.infra.entity.Transactions;
 import com.pndev.transacao_simpls.infra.entity.TypeUser;
 import com.pndev.transacao_simpls.infra.entity.User;
+import com.pndev.transacao_simpls.infra.entity.Wallet;
+import com.pndev.transacao_simpls.infra.repository.TransactionsRepository;
+import feign.Client;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.math.BigDecimal;
 
@@ -16,7 +23,9 @@ public class TransactionsService {
 
     private final UserService userService;
     private final AuthorizationService authorizationService;
-
+    private final WalletService walletService;
+    private final TransactionsRepository transactionsRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public void transferAmount(TransactionDTO transactionDTO) {
@@ -26,6 +35,20 @@ public class TransactionsService {
         validateUser(payer);
         checkBalance(payer, transactionDTO.amount());
         transferValidate();
+
+        payer.getWallet().setBalance(payer.getWallet().getBalance().subtract(transactionDTO.amount()));
+        updateBalance(payer.getWallet());
+
+        payee.getWallet().setBalance(payee.getWallet().getBalance().add(transactionDTO.amount()));
+        updateBalance(payee.getWallet());
+
+        Transactions transactions = Transactions.builder()
+                .amount(transactionDTO.amount())
+                .payer(payer)
+                .payee(payee)
+                .build();
+        transactionsRepository.save(transactions);
+        sendNotification();
     }
 
     private void validateUser(User user) {
@@ -56,6 +79,18 @@ public class TransactionsService {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(e.getMessage());
         }
+    }
+
+    private void updateBalance(Wallet wallet) {
+        walletService.save(wallet);
+    }
+
+    private void sendNotification(){
+        try {
+            notificationService.sendNotification();
+        } catch (HttpClientErrorException e) {
+            throw new BadRequestExeption("Erro ao enviar notificação");
+            }
     }
 
 }

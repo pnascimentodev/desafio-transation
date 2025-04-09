@@ -21,11 +21,11 @@ services:
 
   app:
     build: .
-    container_name: agendamento
+    container_name: transacao
     depends_on:
       - postgres
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/db_agendamento
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/db_transacao
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 1234
     ports:
